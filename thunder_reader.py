@@ -7,6 +7,9 @@ import json
 import time
 import math
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 
 # ---------------------------------------------------------------------------- #
@@ -49,11 +52,13 @@ class MapReader:
             "player": None
         }
         
-        self.map_image = None
+        self.isReady = False
+        self.last_error = None
         
         self.update_objects_data()
 
     def map_init(self):
+        logger.info("Map initialization started")
         data = json.loads(urlopen(THUNDER_MAP_INFO_PATH).read())
         
         self._map_data = data
@@ -66,6 +71,8 @@ class MapReader:
             self._map_data["map_max"][0] - self._map_data["map_min"][0],
             self._map_data["map_max"][1] - self._map_data["map_min"][1]
         ]
+        
+        logger.info("Map initialization complete")
 
     
     # ---------------------------------- Update ---------------------------------- #
@@ -74,8 +81,7 @@ class MapReader:
         try:
             if not self.isReady:
                 self.map_init()
-                print("Map init")
-            
+
             self._objects_data = json.loads(urlopen(THUNDER_OBJECTS_PATH).read())
             
             self.objects = {
@@ -130,7 +136,7 @@ class MapReader:
                     self.objects["other"].append(data)
             
             if not self.objects["player"]:
-                print("Player not found")
+                logger.exception("Player not found")
                 
                 self.isReady = False
                 return None
@@ -138,7 +144,7 @@ class MapReader:
             self.isReady = True
             return True
         except Exception as e:
-            print(f"Failed to update objects data: {e}")
+            self.last_error = e
             self.isReady = False
             
             return None

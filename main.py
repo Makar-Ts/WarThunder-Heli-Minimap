@@ -1,12 +1,36 @@
 # pylint: undefined-loop-variable, disable=line-too-long, invalid-name, import-error, multiple-imports, unspecified-encoding, broad-exception-caught, trailing-whitespace, no-name-in-module, unused-import
 
 import sys, os
-import configparser
+import local.config as clconfig
+import time
 from tkinter import *
 from tkinter import ttk
 
 import thunder_reader
 from objects import Player, ObjectDrawer
+
+
+# ---------------------------------- Logger ---------------------------------- #
+
+import logging
+logging.basicConfig(
+    level=logging.INFO, 
+    filename=os.path.join(
+        sys.path[0], 
+        "local", 
+        "log", 
+        f"{time.time()}_log.log"
+    ), 
+    filemode="w",
+    format="%(asctime)s | [%(name)s] %(levelname)s | %(message)s")
+
+log_formatter = logging.Formatter("%(asctime)s | [%(name)s] %(levelname)s | %(message)s")
+
+logger = logging.getLogger()
+
+stream_logger = logging.StreamHandler()
+stream_logger.setFormatter(log_formatter)
+logger.addHandler(stream_logger)
 
 
 
@@ -15,19 +39,16 @@ from objects import Player, ObjectDrawer
 # ---------------------------------------------------------------------------- #
 
 
-import local.files_check
-local.files_check.main(0, "local")
+root=Tk()
 
-config = configparser.ConfigParser()
-config.read(os.path.join(sys.path[0], "local", "config.ini"))
-
-print(f"{config["position"]["x"]} {config["position"]["y"]}  {config["size"]["x"]}x{config["size"]["y"]}")
+config = clconfig.Config((root.winfo_screenwidth(), root.winfo_screenheight()))
 
 
 # --------------------------------- Constants -------------------------------- #
 
-TRANSPARENT_COLOR = "#"+config["settings"]["bg_color"]
-ZOOM = int(config["settings"]["zoom"])
+TRANSPARENT_COLOR = "#"+config.bg_color
+ZOOM = config.zoom
+UPPER_PADDING = 30
 
 
 
@@ -36,13 +57,17 @@ ZOOM = int(config["settings"]["zoom"])
 # ---------------------------------------------------------------------------- #
 
 
-root=Tk()
+logger.info("Setting up the window")
+
 root.title("Map ThunderParcer")
 
-root.geometry(f"{config["size"]["x"]}x{int(config["size"]["y"])+20}+{config["position"]["x"]}+{int(config["position"]["y"])-20}")
+geometry = f"{config.size["x"]}x{config.size["y"]+UPPER_PADDING}+{config.position["x"]}+{config.position["y"]-UPPER_PADDING}"
+
+root.geometry(geometry)
+logger.info(f"Geometry {geometry}")
 
 root.overrideredirect(True)
-if int(config["settings"]["trasparent"]):
+if config.transparent:
     root.attributes("-transparentcolor",TRANSPARENT_COLOR)
 root.config(bg=TRANSPARENT_COLOR)
 
@@ -56,11 +81,13 @@ root.config(bg=TRANSPARENT_COLOR)
 # ------------------------------- Close Button ------------------------------- #
 
 b=Button(root,text="close",command=lambda:exit(0))
-b.place(x=int(config["size"]["x"])-40, rely=0)
+b.place(x=config.size["x"]-40, rely=0, height=UPPER_PADDING, width=40)
 
 
 # ------------------------------- Map Canvas ------------------------------- #
 
+
+is_canvas_shown=True
 canvas_style = ttk.Style()
 canvas_style.configure("My.TCanvas",       
                     font="consolas 14",  
@@ -71,13 +98,13 @@ canvas_style.configure("My.TCanvas",
 
 canvas = Canvas(
     root, 
-    width=int(config["size"]["x"])-10, 
-    height=int(config["size"]["y"])-10, 
+    width=int(config.size["x"])-10, 
+    height=int(config.size["y"])-10, 
     border=0,
     borderwidth=1,
     bg=TRANSPARENT_COLOR
 )
-canvas.place(relx=0, y=20)
+canvas.place(relx=0, y=UPPER_PADDING)
 
 #map_img = MapImage(
 #    canvas, 
@@ -91,24 +118,83 @@ canvas.place(relx=0, y=20)
 
 # ------------------------------- Objects Setup ------------------------------ #
 
+logger.info("Setting up Draw Objects")
+
 player = Player(canvas, 5, 10, 0, 0, 0)
 drawer = ObjectDrawer(
     canvas,
     (
-        int(config["size"]["x"]),
-        int(config["size"]["y"])
+        config.size["x"],
+        config.size["y"]
     ),
     (
-        int(config["object_other_size"]["x"]),
-        int(config["object_other_size"]["y"])
+        config.object_size["other"]["x"],
+        config.object_size["other"]["y"]
     ),
     (
-        int(config["object_ground_size"]["x"]),
-        int(config["object_ground_size"]["y"])
+        config.object_size["ground"]["x"],
+        config.object_size["ground"]["y"]
     )
 )
+drawer.load_font(os.path.join(sys.path[0], "local", "font.ttf"), config.text_size)
 drawer.set_zoom(ZOOM)
-drawer.load_font(os.path.join(sys.path[0], "local", "font.ttf"), int(config["settings"]["text_size"]))
+
+def change_zoom(zoom):
+    ZOOM = zoom
+    
+    drawer.set_zoom(zoom)
+
+
+# -------------------------------- Zoom Slider ------------------------------- #
+
+def zoom_slider(event):  
+    change_zoom(slider.get())
+
+slider_style = ttk.Style()
+slider_style.configure("background", TRANSPARENT_COLOR)
+
+slider = ttk.Scale(
+    root,
+    from_=1,
+    to=20,
+    orient='horizontal',
+    command=zoom_slider,
+    #style=slider_style
+)
+slider.set(ZOOM)
+slider.place(
+    relx=0, 
+    rely=0, 
+    width=config.size["x"]-80,
+    height=UPPER_PADDING
+)
+
+
+# ----------------------------- Show/Hide button ----------------------------- #
+
+def toggle_canvas():
+    global is_canvas_shown
+    if canvas.winfo_ismapped():
+        canvas.place_forget()
+        is_canvas_shown=False
+        
+        slider['state'] = 'disabled'
+        
+        b2.config(text="show")
+        
+        logger.info("Canvas hidden. Updating stopped")
+    else:
+        canvas.place(relx=0, y=UPPER_PADDING)
+        is_canvas_shown=True
+        
+        slider['state'] = 'normal'
+        
+        b2.config(text="hide")
+        
+        logger.info("Canvas shown. Updating resumption")
+
+b2=Button(root,text="hide",command=toggle_canvas)
+b2.place(x=config.size["x"]-80, rely=0, height=UPPER_PADDING, width=40)
 
 
 
@@ -120,13 +206,25 @@ drawer.load_font(os.path.join(sys.path[0], "local", "font.ttf"), int(config["set
 def main(reader):
     
     
+    # -------------------------------- Clear Cache ------------------------------- #
+    
+    if len(drawer.images__text) > config.cache["max_images"]: 
+        drawer.clear_cache__text_images() # clearing the cache
+    
     # -------------------------------- Update Data ------------------------------- #
     
     beenReady = reader.isReady
     
-    if not reader.update_objects_data():
+    if not is_canvas_shown:
         canvas.delete("object")
-        return canvas.after(3000, main, reader)
+        
+        return canvas.after(config.update_time["usual"], main, reader)
+    
+    if not reader.update_objects_data():
+        logger.exception(reader.last_error)
+        
+        canvas.delete("object")
+        return canvas.after(config.update_time["not_working"], main, reader)
     
     
     # ----------------------------- Delete Last Frame ---------------------------- #
@@ -145,8 +243,8 @@ def main(reader):
     
     drawer.set_player_pos(ppos)
     
-    cx = 0.5*int(config["size"]["x"])
-    cy = 0.5*int(config["size"]["y"])
+    cx = 0.5*config.size["x"]
+    cy = 0.5*config.size["y"]
     
     
     # ----------------------------- New Frame Render ----------------------------- #
@@ -188,16 +286,19 @@ def main(reader):
     # -------------------------------- Finalizing -------------------------------- #
     
     canvas.tag_raise("text")
+    canvas.tag_raise("ui__zoom_text")
     player.move(cx, cy, reader.player__heading())
     
     
-    canvas.after(50, main, reader)
+    canvas.after(config.update_time["usual"], main, reader)
 
 
 
 # ---------------------------------------------------------------------------- #
 #                                  Loop Start                                  #
 # ---------------------------------------------------------------------------- #
+
+logger.info("Starting the main loop")
 
 reader = thunder_reader.MapReader()
 

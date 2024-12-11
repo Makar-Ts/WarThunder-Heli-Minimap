@@ -1,9 +1,12 @@
 # pylint: disable=line-too-long, invalid-name, import-error, multiple-imports, unspecified-encoding, broad-exception-caught, trailing-whitespace, no-name-in-module, unused-import
 
 import math
+import time
 from PIL import Image, ImageFont, ImageDraw, ImageTk
 from geom import segment_square_intersection, rotate_points
 
+import logging
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------- #
@@ -128,17 +131,23 @@ class ObjectDrawer:
         self.os_other = object_size__other
         self.gs_other = object_size__ground
         
-        self.images__airfield_distance = {} # caching distance text
+        self.images__text = {} # caching distance text
         
         self.zoom = 1
         
         self.ppos = (0, 0)
+        
+        self.font_mult = 1
+        self.font_path = None
+        self.font = None
     
     
     # --------------------------------- Set Vars --------------------------------- #
     
     def set_zoom(self, zoom):
         self.zoom = zoom
+        
+        self.draw_ui__zoom_text()
     
     def set_player_pos(self, pos):
         self.ppos = (
@@ -151,7 +160,15 @@ class ObjectDrawer:
     
     def load_font(self, path, font_size_multiplier):
         self.font_mult = font_size_multiplier
-        self.font = ImageFont.truetype(path, self.os_other[0]*self.zoom*self.font_mult)
+        self.font_path = path
+        
+        self.update_font()
+        
+    def update_font(self):
+        if not self.font_path:
+            return
+        
+        self.font = ImageFont.truetype(self.font_path, round(self.os_other[0]*self.font_mult))
     
     
     
@@ -159,6 +176,19 @@ class ObjectDrawer:
     # ---------------------------------------------------------------------------- #
     #                                     Draw                                     #
     # ---------------------------------------------------------------------------- #
+    
+    
+    # ----------------------------------- Text ----------------------------------- #
+    
+    def draw_ui__zoom_text(self):
+        self.canvas.delete("ui__zoom_text")
+        
+        self.canvas.create_image( 
+            (5, 5), 
+            image=self.generate_text(f"{round(self.zoom, 2)}x", "white"),
+            tags="ui__zoom_text",
+            anchor="nw"
+        )
     
     
     # ---------------------------------- Simple ---------------------------------- #
@@ -190,8 +220,15 @@ class ObjectDrawer:
     
     def generate_text(self, text, color):
         identifier = f"{text}_{color}"
-        if identifier not in self.images__airfield_distance:
-            img = (Image.new("RGBA", (self.os_other[0]*self.zoom*len(text)*self.font_mult//2, self.os_other[0]*self.zoom*self.font_mult), (255, 255, 255, 0)))
+        if identifier not in self.images__text:
+            img = (Image.new(
+                "RGBA", 
+                (
+                    round(self.os_other[0]*len(text)*self.font_mult//2), 
+                    round(self.os_other[0]*self.font_mult)
+                ), 
+                (255, 255, 255, 0))
+            )
             draw = ImageDraw.Draw(img)
             draw.fontmode = "1"
             draw.text(
@@ -200,13 +237,18 @@ class ObjectDrawer:
                 font=self.font, 
                 fill=color
             )
-            if len(self.images__airfield_distance) > 300: 
-                self.images__airfield_distance = {} # clearing the cache
             
             
-            self.images__airfield_distance[identifier] = ImageTk.PhotoImage(img)
+            self.images__text[identifier] = ImageTk.PhotoImage(img)
         
-        return self.images__airfield_distance[identifier]
+        return self.images__text[identifier]
+    
+    def clear_cache__text_images(self):
+        t = time.localtime()
+        logger.info(f"Image Cache cleared (cleared {len(self.images__text)} imgs)")
+        self.images__text = {}
+        
+        self.draw_ui__zoom_text()
     
     def draw_object__by_points(self, x, y, points, color, outline=None):
         res = []
