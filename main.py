@@ -202,9 +202,9 @@ b2.place(x=config.size["x"]-80, rely=0, height=UPPER_PADDING, width=40)
 #                                     Main                                     #
 # ---------------------------------------------------------------------------- #
 
-
+is_error_shown=False
 def main(reader):
-    
+    global is_error_shown
     
     # -------------------------------- Clear Cache ------------------------------- #
     
@@ -217,13 +217,18 @@ def main(reader):
     
     if not is_canvas_shown:
         canvas.delete("object")
+        canvas.delete("text")
         
         return canvas.after(config.update_time["usual"], main, reader)
     
     if not reader.update_objects_data():
-        logger.exception(reader.last_error)
+        if not is_error_shown: 
+            logger.exception(reader.last_error)
         
         canvas.delete("object")
+        canvas.delete("text")
+        
+        is_error_shown=True
         return canvas.after(config.update_time["not_working"], main, reader)
     
     
@@ -238,6 +243,7 @@ def main(reader):
     #if not beenReady and reader.isReady:
     #    map_img.update_img(reader.get_map_size(), ZOOM)
     
+    is_error_shown=False
     
     ppos = reader.pabs(reader.objects["player"])
     
@@ -248,17 +254,24 @@ def main(reader):
     
     
     # ----------------------------- New Frame Render ----------------------------- #
+
+    for i in reader.get_mid_spawns():
+        pos = reader.abs(i["position"])
+        
+        drawer.draw_object__respawn_base_tank(pos[0], pos[1], i["color"])
     
     for i in reader.objects["other"]:
         pos = reader.abs(i["position"])
         
         if i["type"] == "respawn_base_tank":
-            drawer.draw_object__respawn_base_tank(pos[0], pos[1], i["color"])
+            #drawer.draw_object__respawn_base_tank(pos[0], pos[1], i["color"])
             continue
-        elif i["type"] == "respawn_base_fighter":
+        
+        if i["type"] == "respawn_base_fighter":
             drawer.draw_object__respawn_base_fighter(pos[0], pos[1], i["color"])
             continue
-        elif i["type"] == "airfield":
+        
+        if i["type"] == "airfield":
             drawer.draw_object__airfield(
                 pos[0], pos[1], 
                 i["color"], 

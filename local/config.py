@@ -92,12 +92,12 @@ class Config:
 
         self.object_size = {
             "ground": {
-                "x": int(self.config.get("object_ground_size", "x", fallback=1)),
-                "y": int(self.config.get("object_ground_size", "y", fallback=1))
+                "x": float(self.config.get("object_ground_size", "x", fallback=1.0)),
+                "y": float(self.config.get("object_ground_size", "y", fallback=1.0))
             },
             "other": {
-                "x": int(self.config.get("object_other_size", "x", fallback=2)),
-                "y": int(self.config.get("object_other_size", "y", fallback=2))
+                "x": float(self.config.get("object_other_size", "x", fallback=2.0)),
+                "y": float(self.config.get("object_other_size", "y", fallback=2.0))
             }
         }
 

@@ -58,7 +58,6 @@ class MapReader:
         self.update_objects_data()
 
     def map_init(self):
-        logger.info("Map initialization started")
         data = json.loads(urlopen(THUNDER_MAP_INFO_PATH).read())
         
         self._map_data = data
@@ -136,9 +135,9 @@ class MapReader:
                     self.objects["other"].append(data)
             
             if not self.objects["player"]:
-                logger.exception("Player not found")
-                
+                self.last_error = "Player not found"
                 self.isReady = False
+                
                 return None
             
             self.isReady = True
@@ -182,6 +181,43 @@ class MapReader:
     
     def player__heading(self):
         return math.atan2(self.objects["player"][3], self.objects["player"][2])
+    
+    def get_mid_spawns(self):
+        if not self.objects["other"]:
+            return []
+        
+        spawns = {}
+        
+        for sp in self.objects["other"]:
+            if not sp["type"] == "respawn_base_tank":
+                continue
+            
+            name = f"{math.floor(sp["position"][0]/250)}x{math.floor(sp["position"][1]/200)}_{sp["color"]}"
+            
+            if name in spawns:
+                spawns[name]["pos_sum"][0] += sp["position"][0]
+                spawns[name]["pos_sum"][1] += sp["position"][1]
+                spawns[name]["count"] += 1
+            else:
+                spawns[name] = {
+                    "pos_sum": [sp["position"][0], sp["position"][1]],
+                    "count": 1
+                }
+            
+        mid_spawns = []
+        for name, spawn in spawns.items():
+            name, color = name.split("_")
+            
+            mid_spawns.append({
+                "name": name,
+                "color": color,
+                "position": (
+                    spawn["pos_sum"][0]/spawn["count"],
+                    spawn["pos_sum"][1]/spawn["count"]
+                )
+            })
+            
+        return mid_spawns
     
     
     # ----------------------- Convert To Absolute Position ----------------------- #
