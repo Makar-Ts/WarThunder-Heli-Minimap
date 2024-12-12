@@ -70,8 +70,6 @@ class MapReader:
             self._map_data["map_max"][0] - self._map_data["map_min"][0],
             self._map_data["map_max"][1] - self._map_data["map_min"][1]
         ]
-        
-        logger.info("Map initialization complete")
 
     
     # ---------------------------------- Update ---------------------------------- #
@@ -139,6 +137,9 @@ class MapReader:
                 self.isReady = False
                 
                 return None
+            
+            if not self.isReady:
+                logger.info("Map initialization complete (map size: %dx%d, gen: %d)", self._map_size[0], self._map_size[1], self._map_data["map_generation"])
             
             self.isReady = True
             return True

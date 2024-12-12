@@ -12,6 +12,7 @@ from objects import Player, ObjectDrawer
 
 # ---------------------------------- Logger ---------------------------------- #
 
+import log
 import logging
 logging.basicConfig(
     level=logging.INFO, 
@@ -24,13 +25,7 @@ logging.basicConfig(
     filemode="w",
     format="%(asctime)s | [%(name)s] %(levelname)s | %(message)s")
 
-log_formatter = logging.Formatter("%(asctime)s | [%(name)s] %(levelname)s | %(message)s")
-
-logger = logging.getLogger()
-
-stream_logger = logging.StreamHandler()
-stream_logger.setFormatter(log_formatter)
-logger.addHandler(stream_logger)
+logger = log.configure_logger()
 
 
 
@@ -80,12 +75,15 @@ root.config(bg=TRANSPARENT_COLOR)
 
 # ------------------------------- Close Button ------------------------------- #
 
+logger.info("Setting up \"close\" button")
+
 b=Button(root,text="close",command=lambda:exit(0))
 b.place(x=config.size["x"]-40, rely=0, height=UPPER_PADDING, width=40)
 
 
 # ------------------------------- Map Canvas ------------------------------- #
 
+logger.info("Setting up canvas")
 
 is_canvas_shown=True
 canvas_style = ttk.Style()
@@ -147,6 +145,8 @@ def change_zoom(zoom):
 
 # -------------------------------- Zoom Slider ------------------------------- #
 
+logger.info("Setting up zoom slider")
+
 def zoom_slider(event):  
     change_zoom(slider.get())
 
@@ -171,6 +171,8 @@ slider.place(
 
 
 # ----------------------------- Show/Hide button ----------------------------- #
+
+logger.info("Setting up \"show/hide\" button")
 
 def toggle_canvas():
     global is_canvas_shown
@@ -256,44 +258,53 @@ def main(reader):
     # ----------------------------- New Frame Render ----------------------------- #
 
     for i in reader.get_mid_spawns():
-        pos = reader.abs(i["position"])
-        
-        drawer.draw_object__respawn_base_tank(pos[0], pos[1], i["color"])
+        try:
+            pos = reader.abs(i["position"])
+            
+            drawer.draw_object__respawn_base_tank(pos[0], pos[1], i["color"])
+        except Exception as e:
+            logger.exception(f"Error drawing object {i['name'] if 'name' in i else None if i else None}: {e}")
     
     for i in reader.objects["other"]:
         pos = reader.abs(i["position"])
         
-        if i["type"] == "respawn_base_tank":
-            #drawer.draw_object__respawn_base_tank(pos[0], pos[1], i["color"])
-            continue
-        
-        if i["type"] == "respawn_base_fighter":
-            drawer.draw_object__respawn_base_fighter(pos[0], pos[1], i["color"])
-            continue
-        
-        if i["type"] == "airfield":
-            drawer.draw_object__airfield(
-                pos[0], pos[1], 
-                i["color"], 
-                round(
-                    reader.player__get_distance(
-                            i["position"][0], 
-                            i["position"][1]
-                        )/1000, 
-                    1
-                    )
-            )
-            continue
+        try:
+            if i["type"] == "respawn_base_tank":
+                #drawer.draw_object__respawn_base_tank(pos[0], pos[1], i["color"]) replaced with get_mid_spawns
+                continue
+            
+            if i["type"] == "respawn_base_fighter":
+                drawer.draw_object__respawn_base_fighter(pos[0], pos[1], i["color"])
+                continue
+            
+            if i["type"] == "airfield":
+                drawer.draw_object__airfield(
+                    pos[0], pos[1], 
+                    i["color"], 
+                    round(
+                        reader.player__get_distance(
+                                i["position"][0], 
+                                i["position"][1]
+                            )/1000, 
+                        1
+                        )
+                )
+                continue
 
-        if "dir" in i:
-            drawer.draw_object__plane(pos[0], pos[1], i["dir"][0], i["dir"][1], i["color"])
-        else:
-            drawer.draw_object__other(pos[0], pos[1], i["color"])
+            if "dir" in i:
+                drawer.draw_object__plane(pos[0], pos[1], i["dir"][0], i["dir"][1], i["color"])
+            else:
+                drawer.draw_object__other(pos[0], pos[1], i["color"])
+        except Exception as e:
+            logger.exception(f"Error drawing object {i['type'] if 'type' in i else None if i else None}: {e}")
     
     for i in reader.objects["ground"]:
-        pos = reader.abs(i["position"])
-        
-        drawer.draw_object__ground(pos[0], pos[1], i["color"])
+        try:
+            pos = reader.abs(i["position"])
+            
+            drawer.draw_object__ground(pos[0], pos[1], i["color"])
+        except Exception as e:
+            logger.exception(f"Error drawing ground object {i['type'] if 'type' in i else None if i else None}: {e}")
     
     
     # -------------------------------- Finalizing -------------------------------- #

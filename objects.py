@@ -122,6 +122,8 @@ class ObjectDrawer:
     # ----------------------------------- Init ----------------------------------- #
     
     def __init__(self, canvas, size, object_size__other, object_size__ground):
+        logger.info("ObjectDrawer init started")
+        
         self.canvas = canvas
         self.size = size
         
@@ -140,6 +142,8 @@ class ObjectDrawer:
         self.font_mult = 1
         self.font_path = None
         self.font = None
+        
+        logger.info("ObjectDrawer init complete")
     
     
     # --------------------------------- Set Vars --------------------------------- #
@@ -159,16 +163,23 @@ class ObjectDrawer:
         self.size = size
     
     def load_font(self, path, font_size_multiplier):
+        logger.info("Loading font")
+        
         self.font_mult = font_size_multiplier
         self.font_path = path
         
         self.update_font()
         
+        logger.info("Font loaded")
+        
     def update_font(self):
         if not self.font_path:
+            logger.exception("No font path. Cannot update font")
             return
         
         self.font = ImageFont.truetype(self.font_path, round(self.os_other[0]*self.font_mult))
+        
+        logger.info("Font update complete")
     
     
     
