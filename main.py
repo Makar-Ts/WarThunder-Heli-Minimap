@@ -257,7 +257,7 @@ def main(reader):
     
     # ----------------------------- New Frame Render ----------------------------- #
 
-    for i in reader.get_mid_spawns():
+    for i in reader.get_mid_spawns(config.cache["use_cached_spawns_positions"]):
         try:
             pos = reader.abs(i["position"])
             

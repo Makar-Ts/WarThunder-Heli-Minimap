@@ -56,7 +56,8 @@ class Config:
         }
         
         self.cache = {
-            "max_images": int(self.config.get("cache", "max_images", fallback=300))
+            "max_images": int(self.config.get("cache", "max_images", fallback=300)),
+            "use_cached_spawns_positions": bool(self.config.get("cache", "use_cached_spawns_positions", fallback=True)),
         }
 
         if self.config.has_section("position"):
