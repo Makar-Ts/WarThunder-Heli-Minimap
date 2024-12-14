@@ -117,7 +117,7 @@ canvas.place(relx=0, y=UPPER_PADDING)
 # ------------------------------- Objects Setup ------------------------------ #
 
 logger.info("Setting up Draw Objects")
-
+print(config.zoom_affect_sprites)
 player = Player(canvas, 5, 10, 0, 0, 0)
 drawer = ObjectDrawer(
     canvas,
@@ -132,7 +132,8 @@ drawer = ObjectDrawer(
     (
         config.object_size["ground"]["x"],
         config.object_size["ground"]["y"]
-    )
+    ),
+    config.zoom_affect_sprites
 )
 drawer.load_font(os.path.join(sys.path[0], "local", "font.ttf"), config.text_size)
 drawer.set_zoom(ZOOM)

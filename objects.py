@@ -1,6 +1,7 @@
 # pylint: disable=line-too-long, invalid-name, import-error, multiple-imports, unspecified-encoding, broad-exception-caught, trailing-whitespace, no-name-in-module, unused-import
 
 import math
+import sys
 import time
 from PIL import Image, ImageFont, ImageDraw, ImageTk
 from geom import segment_square_intersection, rotate_points
@@ -224,21 +225,21 @@ class ObjectDrawer:
     
     def draw_object__other(self, x, y, color):
         self.canvas.create_oval(
-            self.cx + (self.ppos[0] - x*self.size[0] - self.os_other[0])*self.zoom, 
-            self.cy + (self.ppos[1] - y*self.size[1] - self.os_other[1])*self.zoom,
-            self.cx + (self.ppos[0] - x*self.size[0] + self.os_other[0])*self.zoom, 
-            self.cy + (self.ppos[1] - y*self.size[1] + self.os_other[1])*self.zoom,
+            self.rx(x, -self.os_other[0]), 
+            self.ry(y, -self.os_other[1]),
+            self.rx(x, self.os_other[0]), 
+            self.ry(y, self.os_other[1]),
             fill=color,
             outline=color,
             tags="object"
         )
-    
+
     def draw_object__ground(self, x, y, color):
         self.canvas.create_rectangle(
-            self.cx + (self.ppos[0] - x*self.size[0] - self.gs_other[0])*self.zoom, 
-            self.cy + (self.ppos[1] - y*self.size[1] - self.gs_other[1])*self.zoom,
-            self.cx + (self.ppos[0] - x*self.size[0] + self.gs_other[0])*self.zoom, 
-            self.cy + (self.ppos[1] - y*self.size[1] + self.gs_other[1])*self.zoom,
+            self.rx(x, -self.gs_other[0]), 
+            self.ry(y, -self.gs_other[1]),
+            self.rx(x, self.gs_other[0]), 
+            self.ry(y, self.gs_other[1]),
             fill=color,
             outline="black",
             tags="object"
@@ -277,7 +278,9 @@ class ObjectDrawer:
         logger.info(f"Image Cache clear started")
         
         ln = len(self.images__text)
+        bt = sys.getsizeof(self.images__text)
         k = list(self.images__text.keys())
+        
         for key in k:
             del self.images__text[key]
         
@@ -287,7 +290,7 @@ class ObjectDrawer:
         gc.collect()
         self.draw_ui__zoom_text()
         
-        logger.info(f"Cleared {ln} imgs. Time: {round((time.time() - t) * 1000, 4)} miliseconds")
+        logger.info(f"Cleared {ln} imgs ({round(bt/1024, 3)}Kb). Time: {round((time.time() - t) * 1000, 4)} miliseconds")
     
     def draw_object__by_points(self, x, y, points, color, outline=None):
         res = []
@@ -298,12 +301,9 @@ class ObjectDrawer:
         is_outside = True
         
         for i, p in enumerate(points):
-            xy = i%2
+            xy = i % 2
             
-            c = self.cx if xy == 0 else self.cy
-            r = x if xy == 0 else y
-            
-            pos = c + (self.ppos[xy] - r*self.size[xy] + p)*self.zoom
+            pos = self.rx(x, p) if xy == 0 else self.ry(y, p)
             
             if xy == 1:
                 is_outside = is_outside and (
@@ -390,8 +390,8 @@ class ObjectDrawer:
         ]
         
         text_pos = [
-            self.cx + (self.ppos[0] - x*self.size[0])*self.zoom,
-            self.cy + (self.ppos[1] - y*self.size[1] - self.os_other[1])*self.zoom
+            self.rx(x),
+            self.ry(y, -self.os_other[1])
         ]
         anchor='s' # n e s w
         
