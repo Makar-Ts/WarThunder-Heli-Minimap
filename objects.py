@@ -308,7 +308,7 @@ class ObjectDrawer:
             [0, self.gs_other[1]*2]
         ]
         
-        p = rotate_points(points, math.atan2(dx, dy))
+        p = rotate_points(points, math.atan2(dx, dy)-math.pi/2*3)
         
         self.draw_object__by_points(x, y, p, color, "black")
     

@@ -56,7 +56,7 @@ logger.info("Setting up the window")
 
 root.title("Map ThunderParcer")
 
-geometry = f"{config.size["x"]}x{config.size["y"]+UPPER_PADDING}+{config.position["x"]}+{config.position["y"]-UPPER_PADDING}"
+geometry = f'{config.size["x"]}x{config.size["y"]+UPPER_PADDING}+{config.position["x"]}+{config.position["y"]-UPPER_PADDING}'
 
 root.geometry(geometry)
 logger.info(f"Geometry {geometry}")

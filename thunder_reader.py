@@ -142,7 +142,7 @@ class MapReader:
                 self.map_spawns_cached = self.generate_mid_spawns()
                 logger.info("Spawns calculated: %s", "".join(
                                     map(
-                                        lambda obj: f"\n{" "*25} {obj["name"]} ({obj["position"][0]}x{obj["position"][1]})", 
+                                        lambda obj: f'\n{" "*25} {obj["name"]} ({obj["position"][0]}x{obj["position"][1]})', 
                                         self.map_spawns_cached
                                     )
                                 )
@@ -217,7 +217,7 @@ class MapReader:
             if sp["type"] != "respawn_base_tank":
                 continue
             
-            name = f"{math.floor(sp["position"][0]/250)}x{math.floor(sp["position"][1]/200)}_{sp["color"]}"
+            name = f'{math.floor(sp["position"][0]/250)}x{math.floor(sp["position"][1]/200)}_{sp["color"]}'
             
             if name in spawns:
                 spawns[name]["pos_sum"][0] += sp["position"][0]
