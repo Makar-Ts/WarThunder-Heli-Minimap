@@ -5,6 +5,8 @@ import time
 from PIL import Image, ImageFont, ImageDraw, ImageTk
 from geom import segment_square_intersection, rotate_points
 
+import gc
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -121,7 +123,7 @@ class ObjectDrawer:
     
     # ----------------------------------- Init ----------------------------------- #
     
-    def __init__(self, canvas, size, object_size__other, object_size__ground):
+    def __init__(self, canvas, size, object_size__other, object_size__ground, is_zoom_affect_sprites=True):
         logger.info("ObjectDrawer init started")
         
         self.canvas = canvas
@@ -136,6 +138,7 @@ class ObjectDrawer:
         self.images__text = {} # caching distance text
         
         self.zoom = 1
+        self.zoom_affect_sprites = is_zoom_affect_sprites
         
         self.ppos = (0, 0)
         
@@ -202,6 +205,21 @@ class ObjectDrawer:
         )
     
     
+    # ---------------------------------- Convert --------------------------------- #
+    
+    def rx(self, x, offset=0):
+        if self.zoom_affect_sprites:
+            return self.cx + (self.ppos[0] - x*self.size[0] + offset)*self.zoom
+        
+        return self.cx + (self.ppos[0] - x*self.size[0])*self.zoom + offset
+    
+    def ry(self, y, offset=0):
+        if self.zoom_affect_sprites:
+            return self.cy + (self.ppos[1] - y*self.size[1] + offset)*self.zoom
+        
+        return self.cy + (self.ppos[1] - y*self.size[1])*self.zoom + offset
+    
+    
     # ---------------------------------- Simple ---------------------------------- #
     
     def draw_object__other(self, x, y, color):
@@ -255,11 +273,21 @@ class ObjectDrawer:
         return self.images__text[identifier]
     
     def clear_cache__text_images(self):
-        t = time.localtime()
-        logger.info(f"Image Cache cleared (cleared {len(self.images__text)} imgs)")
-        self.images__text = {}
+        t = time.time()
+        logger.info(f"Image Cache clear started")
         
+        ln = len(self.images__text)
+        k = list(self.images__text.keys())
+        for key in k:
+            del self.images__text[key]
+        
+        self.images__text = {}
+        del k
+        
+        gc.collect()
         self.draw_ui__zoom_text()
+        
+        logger.info(f"Cleared {ln} imgs. Time: {round((time.time() - t) * 1000, 4)} miliseconds")
     
     def draw_object__by_points(self, x, y, points, color, outline=None):
         res = []
