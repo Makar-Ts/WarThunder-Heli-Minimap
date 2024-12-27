@@ -201,8 +201,6 @@ class MapReader:
     
     def get_mid_spawns(self, use_cached=False):
         if not self.objects["other"]:
-            logger.exception("No objects, but trying to get mid_spawns")
-            
             return []
         
         if use_cached:
@@ -249,8 +247,6 @@ class MapReader:
     
     def generate_mid_spawns(self, max_distance=300):
         if not self.objects["other"]:
-            logger.exception("No objects, but trying to generate mid_spawns")
-            
             return []
         
         objects = list(filter(lambda x: x["type"] == "respawn_base_tank", self.objects["other"]))

@@ -1,13 +1,9 @@
 # pylint: undefined-loop-variable, disable=line-too-long, invalid-name, import-error, multiple-imports, unspecified-encoding, broad-exception-caught, trailing-whitespace, no-name-in-module, unused-import
 
-import sys, os
-import local.config as clconfig
-import time
-from tkinter import *
-from tkinter import ttk
 
-import thunder_reader
-from objects import Player, ObjectDrawer
+import os
+import sys
+import time
 
 
 # ---------------------------------- Logger ---------------------------------- #
@@ -26,6 +22,43 @@ logging.basicConfig(
     format="%(asctime)s | [%(name)s] %(levelname)s | %(message)s")
 
 logger = log.configure_logger()
+
+os.system('cls')
+
+
+
+# ---------------------------------------------------------------------------- #
+#                              Check Requirements                              #
+# ---------------------------------------------------------------------------- #
+
+
+import subprocess
+from importlib.metadata import distributions
+
+required = {'pillow'}
+installed = {dist.metadata['Name'] for dist in distributions()}
+missing = required - installed
+
+if missing:
+    logger.warning("Missing dependencies: %s", ", ".join(missing))
+    logger.info("Installing missing dependencies")
+    
+    python = sys.executable
+    subprocess.check_call([python, '-m', 'pip', 'install', *missing], stdout=subprocess.DEVNULL)
+
+
+
+# ---------------------------------------------------------------------------- #
+#                                    Imports                                   #
+# ---------------------------------------------------------------------------- #
+
+
+import local.config as clconfig
+from tkinter import *
+from tkinter import ttk
+
+import thunder_reader
+from objects import Player, ObjectDrawer, SpotsManager
 
 
 
@@ -59,7 +92,7 @@ root.title("Map ThunderParcer")
 geometry = f'{config.size["x"]}x{config.size["y"]+UPPER_PADDING}+{config.position["x"]}+{config.position["y"]-UPPER_PADDING}'
 
 root.geometry(geometry)
-logger.info(f"Geometry {geometry}")
+logger.info("Geometry %s", geometry)
 
 root.overrideredirect(True)
 if config.transparent:
@@ -117,7 +150,6 @@ canvas.place(relx=0, y=UPPER_PADDING)
 # ------------------------------- Objects Setup ------------------------------ #
 
 logger.info("Setting up Draw Objects")
-print(config.zoom_affect_sprites)
 player = Player(canvas, 5, 10, 0, 0, 0)
 drawer = ObjectDrawer(
     canvas,
@@ -137,6 +169,8 @@ drawer = ObjectDrawer(
 )
 drawer.load_font(os.path.join(sys.path[0], "local", "font.ttf"), config.text_size)
 drawer.set_zoom(ZOOM)
+
+spots_manager = SpotsManager(drawer)
 
 def change_zoom(zoom):
     ZOOM = zoom
@@ -206,8 +240,9 @@ b2.place(x=config.size["x"]-80, rely=0, height=UPPER_PADDING, width=40)
 # ---------------------------------------------------------------------------- #
 
 is_error_shown=False
+last_zoom=1
 def main(reader):
-    global is_error_shown
+    global is_error_shown, last_zoom
     
     # -------------------------------- Clear Cache ------------------------------- #
     
@@ -310,8 +345,17 @@ def main(reader):
     
     # -------------------------------- Finalizing -------------------------------- #
     
+    if last_zoom != drawer.zoom or beenReady != reader.isReady:
+        map_s = reader.get_map_size()
+        
+        drawer.draw_ui__length_text(map_s[0], map_s[1])
+        
+        last_zoom = drawer.zoom
+    
     canvas.tag_raise("text")
-    canvas.tag_raise("ui__zoom_text")
+    canvas.tag_raise("ui__zoom_text", "ui__length_text")
+    
+    spots_manager.draw_spots(reader.get_map_size())
     player.move(cx, cy, reader.player__heading())
     
     

@@ -33,11 +33,6 @@ The visualization logic is done with the Python library tkinter, offering a ligh
 - **War Thunder**: Make sure War Thunder is running (and you are in-game) and the localhost API is working - http://127.0.0.1:8111.
 - **Python 3.8+**: This program is written in Python, so make sure Python is installed on your system.
 
-Also, please ensure that the following Python libraries are installed:
-```bash
-pip install pillow
-```
-
 ### Installation
 1. Download code from Releases tab or main page
 2. Run the `main.py`

@@ -49,7 +49,7 @@ class Config:
         self.zoom_affect_sprites = bool(int(self.config.get("settings", "is_zoom_affect_sprites", fallback=0)))
         self.text_size = int(self.config.get("settings", "text_size", fallback=10))
         self.bg_color = self.config.get("settings", "bg_color", fallback="00FFFF")
-        self.transparent = bool(int(self.config.get("settings", "trasparent", fallback=1)))
+        self.transparent = bool(int(self.config.get("settings", "transparent", fallback=1)))
         
         self.update_time = {
             "usual": int(self.config.get("update_time", "usual", fallback=50)),

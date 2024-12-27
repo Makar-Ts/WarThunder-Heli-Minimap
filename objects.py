@@ -205,6 +205,27 @@ class ObjectDrawer:
             anchor="nw"
         )
     
+    def draw_ui__length_text(self, mwidth, mheight):
+        self.canvas.delete("ui__length_text")
+        
+        length = round((self.dy(0) - self.dy(self.size[1]))*mheight/1000, 1)
+        
+        self.canvas.create_image(
+            (5, self.size[0] - self.os_other[0]*self.font_mult - 10),
+            image=self.generate_text(f"{length}km", "white", 270),
+            tags="ui__length_text",
+            anchor="sw"
+        )
+        
+        length2 = round((self.dx(0) - self.dx(self.size[0]))*mwidth/1000, 1)
+        
+        self.canvas.create_image(
+            (self.os_other[0]*self.font_mult, self.size[0] - 10),
+            image=self.generate_text(f"{length2}km", "white"),
+            tags="ui__length_text",
+            anchor="sw"
+        )
+    
     
     # ---------------------------------- Convert --------------------------------- #
     
@@ -220,6 +241,17 @@ class ObjectDrawer:
         
         return self.cy + (self.ppos[1] - y*self.size[1])*self.zoom + offset
     
+    def dx(self, x, offset=0):
+        if self.zoom_affect_sprites:
+            return ((x - self.cx) / self.zoom - self.ppos[0] - offset) / (-self.size[0])
+    
+        return ((x - self.cx - offset) / self.zoom - self.ppos[0]) / (-self.size[0])
+    
+    def dy(self, y, offset=0):
+        if self.zoom_affect_sprites:
+            return ((y - self.cy) / self.zoom - self.ppos[1] - offset) / (-self.size[1])
+    
+        return ((y - self.cy - offset) / self.zoom - self.ppos[1]) / (-self.size[1])
     
     # ---------------------------------- Simple ---------------------------------- #
     
@@ -248,15 +280,21 @@ class ObjectDrawer:
     
     # ----------------------------------- Utils ---------------------------------- #
     
-    def generate_text(self, text, color):
+    def generate_text(self, text, color, rotate=None):
         identifier = f"{text}_{color}"
+        
+        if rotate:
+            identifier += f"_r{rotate}"
+        
         if identifier not in self.images__text:
+            size = [
+                round(self.os_other[0]*len(text)*self.font_mult//2), 
+                round(self.os_other[0]*self.font_mult)
+            ]
+            
             img = (Image.new(
                 "RGBA", 
-                (
-                    round(self.os_other[0]*len(text)*self.font_mult//2), 
-                    round(self.os_other[0]*self.font_mult)
-                ), 
+                tuple(size),
                 (255, 255, 255, 0))
             )
             draw = ImageDraw.Draw(img)
@@ -268,6 +306,8 @@ class ObjectDrawer:
                 fill=color
             )
             
+            if rotate:
+                img = img.rotate(rotate, expand=True)
             
             self.images__text[identifier] = ImageTk.PhotoImage(img)
         
@@ -292,7 +332,7 @@ class ObjectDrawer:
         
         logger.info(f"Cleared {ln} imgs ({round(bt/1024, 3)}Kb). Time: {round((time.time() - t) * 1000, 4)} miliseconds")
     
-    def draw_object__by_points(self, x, y, points, color, outline=None):
+    def draw_object__by_points(self, x, y, points, color, outline=None, tags=["object"]):
         res = []
         
         if not outline:
@@ -321,12 +361,46 @@ class ObjectDrawer:
             res,
             fill=color,
             outline=outline,
-            tags="object"
+            tags=tags
         )
         
         return True
     
+    def draw_object__multiple_points(self, x, y, objects, color, outline=None, tags=["object"]):
+        if not outline:
+            outline = color
+        
+        is_visible = False
+        
+        for obj in objects:
+            v = self.draw_object__by_points(
+                x, 
+                y,
+                obj, 
+                color, 
+                outline, 
+                tags
+            )
+            
+            is_visible = is_visible or v
+
+        return is_visible
     
+    def draw_object__line(self, x1, y1, x2, y2, color, width=None, tags=["object"], offset=[0, 0, 0, 0]):
+        if not width:
+            width = self.os_other[0]
+        
+        self.canvas.create_line(
+            self.rx(x1, offset[0]), 
+            self.ry(y1, offset[1]),
+            self.rx(x2, offset[2]),
+            self.ry(y2, offset[3]),
+            width=width, 
+            fill=color,
+            tags=tags
+        )
+    
+        
     # ------------------------------- Respawn Bases ------------------------------ #
     
     def draw_object__plane(self, x, y, dx, dy, color):
@@ -425,48 +499,154 @@ class ObjectDrawer:
         )
 
 
-#idk how to do this
-#NOT WORKING
-class MapImage:
-    def __init__(self, canvas, size, image_path):
-        self.canvas = canvas
-        self.size = size
-        self.image_path = image_path
+class SpotsManager:
+    def __init__(self, drawer: ObjectDrawer):
+        self.drawer = drawer
+        self.spots = []
         
-        self.map_size = [1, 1]
-        
-        self.cx = 0.5*self.size[0]
-        self.cy = 0.5*self.size[1]
-        
-        self.x = 0
-        self.y = 0
-        
-        self.image_file = None
-        self.tk_image = None
-        
-        self.image_id = None
-        
-    def update_img(self, map_size, zoom):
-        self.image_file = Image.open(self.image_path)
-        print("Map loaded")
-        #self.image_file.resize((int(map_size[0]*zoom), int(map_size[1]*zoom)))
-        
-        #self.map_size = map_size
-        
-        self.tk_image = ImageTk.PhotoImage(self.image_file)
-        
-        self.image_id = self.canvas.create_image(0, 0, image=self.tk_image)
-        self.canvas.scale(
-            self.image_id, 
-            0, 
-            0, 
-            (map_size[0]/self.image_file.size[0])*zoom, 
-            (map_size[1]/self.image_file.size[1])*zoom
-        )
-        print("Map updated")
+        self.drawer.canvas.bind("<Button-1>", self.on_click_1)
+        self.drawer.canvas.bind("<Button-3>", self.on_click_0)
     
-    def move(self, ppos):
-        self.x = self.cx + ppos[0]*self.size[0]
-        self.y = self.cy + ppos[1]*self.size[1]
+    def add_spot(self, rx, ry):
+        self.spots.append((self.drawer.dx(rx), self.drawer.dy(ry)))
+    
+    def remove_spot(self, rx, ry):
+        nearest = [None, 0]
         
-        self.canvas.coords(self.image_id, self.x, self.y)
+        dx = self.drawer.dx(rx)
+        dy = self.drawer.dy(ry)
+        for i, (x, y) in enumerate(self.spots):
+            dist = math.sqrt((dx - x)**2 + (dy - y)**2)
+            
+            if nearest[0] is None or dist < nearest[1]:
+                nearest = [i, dist]
+        
+        if nearest[0] is not None:
+            self.spots.pop(nearest[0])
+    
+    def on_click_1(self, event):
+        self.add_spot(event.x, event.y)
+    
+    def on_click_0(self, event):
+        self.remove_spot(event.x, event.y)
+    
+    def draw_spots(self, map_size):
+        points = [
+            [
+                + self.drawer.os_other[0],
+                + self.drawer.os_other[1]*2,
+                - self.drawer.os_other[0],
+                + self.drawer.os_other[1]*2,
+                - self.drawer.os_other[0],
+                + self.drawer.os_other[1]*1.5,
+                + self.drawer.os_other[0],
+                + self.drawer.os_other[1]*1.5,
+            ],
+            [
+                + self.drawer.os_other[0],
+                - self.drawer.os_other[1]*2,
+                - self.drawer.os_other[0],
+                - self.drawer.os_other[1]*2,
+                - self.drawer.os_other[0],
+                - self.drawer.os_other[1]*1.5,
+                + self.drawer.os_other[0],
+                - self.drawer.os_other[1]*1.5,
+            ],
+            [
+                + self.drawer.os_other[0]*2,
+                - self.drawer.os_other[1],
+                + self.drawer.os_other[0]*2,
+                + self.drawer.os_other[1],
+                + self.drawer.os_other[0]*1.5,
+                + self.drawer.os_other[1],
+                + self.drawer.os_other[0]*1.5,
+                - self.drawer.os_other[1],
+            ],
+            [
+                - self.drawer.os_other[0]*2,
+                - self.drawer.os_other[1],
+                - self.drawer.os_other[0]*2,
+                + self.drawer.os_other[1],
+                - self.drawer.os_other[0]*1.5,
+                + self.drawer.os_other[1],
+                - self.drawer.os_other[0]*1.5,
+                - self.drawer.os_other[1],
+            ]
+        ]
+        
+        pad = max(self.drawer.os_other)*4
+        
+        self.drawer.canvas.delete("spot")
+        
+        for i, pos in enumerate(self.spots):
+            self.drawer.draw_object__multiple_points(
+                pos[0],
+                pos[1],
+                points,
+                "lime",
+                tags=["spot"]
+            )
+            
+            
+            next_index = (i+1)%len(self.spots)
+            
+            if len(self.spots) == 1:
+                nxt_pos_x = self.drawer.ppos[0]/self.drawer.size[0]
+                nxt_pos_y = self.drawer.ppos[1]/self.drawer.size[1]
+            else:
+                nxt_pos_x = self.spots[next_index][0]
+                nxt_pos_y = self.spots[next_index][1]
+            
+            angle = math.atan2(
+                pos[0]-nxt_pos_x,
+                pos[1]-nxt_pos_y
+            )
+            
+            
+            length = round(
+                math.sqrt(
+                    ((pos[0]-nxt_pos_x)*map_size[0])**2 + 
+                    ((pos[1]-nxt_pos_y)*map_size[1])**2
+                )/1000
+            , 1)
+            
+            mid_x = (pos[0] + nxt_pos_x) / 2
+            mid_y = (pos[1] + nxt_pos_y) / 2
+            
+            mid_rx = self.drawer.rx(mid_x)
+            mid_ry = self.drawer.ry(mid_y)
+            
+            text = f"{length}km"
+            self.drawer.canvas.create_image(
+                (mid_rx, mid_ry),
+                image=self.drawer.generate_text(text, "white"),
+                tags="spot"
+            )
+            
+            pad2 = self.drawer.os_other[0]*len(text)*self.drawer.font_mult//4
+            
+            pad2_x = math.sin(angle)*pad2
+            pad2_y = math.cos(angle)*pad2
+            
+            pad_x = math.sin(angle)*pad
+            pad_y = math.cos(angle)*pad
+            
+            self.drawer.draw_object__line(
+                pos[0],
+                pos[1],
+                mid_x,
+                mid_y,
+                "lime",
+                tags=["spot"],
+                offset=[pad_x, pad_y, -pad2_x, -pad2_y]
+            )
+            
+            self.drawer.draw_object__line(
+                mid_x,
+                mid_y,
+                nxt_pos_x,
+                nxt_pos_y,
+                "lime",
+                tags=["spot"],
+                offset=[pad2_x, pad2_y, -pad_x, -pad_y]
+            )

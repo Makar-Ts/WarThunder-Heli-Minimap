@@ -10,6 +10,7 @@ class AlignedFormatter(logging.Formatter):
     def format(self, record):
         record.levelname = f"{record.levelname:<{self.level_width}}"  # Aligns left (e.g. INFO  , WARNING)
         record.name = f"[{record.name:<{self.name_width}}]"           # Aligns left (e.g. [root           ])
+        
         return super().format(record)
 
 
