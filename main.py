@@ -58,7 +58,7 @@ from tkinter import *
 from tkinter import ttk
 
 import thunder_reader
-from objects import Player, ObjectDrawer, SpotsManager
+from objects import Player, ObjectDrawer, SpotsManager, MapDrawer
 
 
 
@@ -137,15 +137,6 @@ canvas = Canvas(
 )
 canvas.place(relx=0, y=UPPER_PADDING)
 
-#map_img = MapImage(
-#    canvas, 
-#    (
-#        int(config["size"]["x"]),
-#        int(config["size"]["y"])
-#    ),
-#    os.path.join(sys.path[0], "local", "map.png")
-#)
-
 
 # ------------------------------- Objects Setup ------------------------------ #
 
@@ -171,6 +162,8 @@ drawer.load_font(os.path.join(sys.path[0], "local", "font.ttf"), config.text_siz
 drawer.set_zoom(ZOOM)
 
 spots_manager = SpotsManager(drawer)
+
+#map_drawer = MapDrawer(drawer, os.path.join(sys.path[0], "local", "map.png"))
 
 def change_zoom(zoom):
     ZOOM = zoom
@@ -240,7 +233,7 @@ b2.place(x=config.size["x"]-80, rely=0, height=UPPER_PADDING, width=40)
 # ---------------------------------------------------------------------------- #
 
 is_error_shown=False
-last_zoom=1
+last_zoom=-1
 def main(reader):
     global is_error_shown, last_zoom
     
@@ -349,6 +342,9 @@ def main(reader):
         map_s = reader.get_map_size()
         
         drawer.draw_ui__length_text(map_s[0], map_s[1])
+        
+        #map_drawer.load_map(map_s)
+        #map_drawer.draw_map()
         
         last_zoom = drawer.zoom
     

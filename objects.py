@@ -3,7 +3,7 @@
 import math
 import sys
 import time
-from PIL import Image, ImageFont, ImageDraw, ImageTk
+from PIL import Image, ImageFont, ImageDraw, ImageTk, ImageOps
 from geom import segment_square_intersection, rotate_points
 
 import gc
@@ -650,3 +650,92 @@ class SpotsManager:
                 tags=["spot"],
                 offset=[pad2_x, pad2_y, -pad_x, -pad_y]
             )
+
+
+# I still dont understand how to do this
+class MapDrawer:
+    def __init__(self, drawer, map_path):
+        self.drawer = drawer
+        
+        self.map_path = map_path
+        
+        self.map_size = (2048, 2048)
+        self.tile_size = (0, 0)
+        
+        self.tiles = []
+        self.tiles_ids = []
+    
+    def load_map(self, map_size):
+        with Image.open(self.map_path) as img:
+            input_image = ImageOps.flip(ImageOps.mirror(img))
+
+            self.map_size = (
+                map_size[0] * self.drawer.zoom,
+                map_size[1] * self.drawer.zoom
+            )
+            
+            image_width, image_height = input_image.size
+            
+            tile_width = image_width // 32
+            tile_height = image_height // 32
+            
+            resize = (
+                self.map_size[0] // image_width,
+                self.map_size[1] // image_height
+            )
+            
+            self.tile_size = (
+                tile_width*resize[0],
+                tile_height*resize[1]
+            )
+            
+            self.tiles = []
+            for y in range(0, image_height, tile_height):
+                tiles = []
+                
+                for x in range(0, image_width, tile_width):
+                    left = x
+                    upper = y
+                    right = x + tile_width
+                    lower = y + tile_height
+
+                    tile = input_image\
+                        .crop((left, upper, right, lower))\
+                        .resize(
+                            (
+                                math.ceil(self.tile_size[0]), 
+                                math.ceil(self.tile_size[1])
+                            )
+                        )
+                    
+                    tiles.append(ImageTk.PhotoImage(tile))
+                
+                self.tiles.append(tiles)
+    
+    def draw_map(self):
+        self.drawer.canvas.delete("map")
+        
+        zero = (
+            self.drawer.rx(-1),
+            self.drawer.ry(-1)
+        )
+
+        for y, row in enumerate(self.tiles):
+            ids = []
+            
+            for x, tile in enumerate(row):
+                ids.append(
+                    self.drawer.canvas.create_image(
+                        (
+                            zero[0] - x*self.tile_size[0], 
+                            zero[1] - y*self.tile_size[1]
+                        ),
+                        image=tile,
+                        tags="map",
+                        anchor="se"
+                    )
+                )
+            
+            self.tiles_ids.append(ids)
+        
+        print(self.tiles_ids, zero)
